@@ -3,25 +3,31 @@ CREATE DATABASE IF NOT EXISTS event_management;
 USE event_management;
 
 CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT(11) NOT NULL AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('organizer', 'sponsor', 'ticket_buyer', 'admin') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    PRIMARY KEY (id),
+    UNIQUE (email)
 );
 
 CREATE TABLE events (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    organizer_id INT NOT NULL,
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    organizer_id INT(11) NOT NULL,
     title VARCHAR(255) NOT NULL,
-    description TEXT,
+    description TEXT DEFAULT NULL,
     date DATETIME NOT NULL,
     location VARCHAR(255) NOT NULL,
-    ticket_price DECIMAL(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE
+    ticket_price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    banner_image VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (organizer_id) REFERENCES users(id)
 );
+
 
 CREATE TABLE tickets (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -35,16 +41,13 @@ CREATE TABLE tickets (
 );
 
 CREATE TABLE sponsorships (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    event_id INT NOT NULL,
-    sponsor_id INT NOT NULL,
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    event_id INT(11) NOT NULL,
+    sponsor_id INT(11) NOT NULL,
     status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
-    proposal_text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-    FOREIGN KEY (sponsor_id) REFERENCES users(id) ON DELETE CASCADE
+    proposal_text TEXT DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    FOREIGN KEY (event_id) REFERENCES events(id),
+    FOREIGN KEY (sponsor_id) REFERENCES users(id)
 );
-
--- Insert default admin user
-INSERT INTO users (name, email, password, role) VALUES 
-('Admin', 'admin@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
