@@ -11,17 +11,17 @@ requireRole('sponsor');
 $sponsorId = getCurrentUserId();
 $sponsorName = $_SESSION['name'];
 
-// 2. Get total number of sponsorships (pending, accepted, etc.)
-$sponsorshipsResult = $conn->prepare("SELECT COUNT(id) as total_sponsorships FROM sponsorships WHERE sponsor_id = ?");
-$sponsorshipsResult->bind_param("i", $sponsorId);
-$sponsorshipsResult->execute();
-$totalSponsorships = $sponsorshipsResult->get_result()->fetch_assoc()['total_sponsorships'];
+// 2. Get total number of proposals sent (all statuses)
+$proposalsResult = $conn->prepare("SELECT COUNT(id) as total_proposals FROM sponsorships WHERE sponsor_id = ?");
+$proposalsResult->bind_param("i", $sponsorId);
+$proposalsResult->execute();
+$totalProposals = $proposalsResult->get_result()->fetch_assoc()['total_proposals'];
 
-// 3. Get total unique events sponsored
-$eventsResult = $conn->prepare("SELECT COUNT(DISTINCT event_id) as total_events FROM sponsorships WHERE sponsor_id = ?");
-$eventsResult->bind_param("i", $sponsorId);
-$eventsResult->execute();
-$totalEvents = $eventsResult->get_result()->fetch_assoc()['total_events'];
+// 3. NEW: Get total number of ACCEPTED sponsorships
+$acceptedResult = $conn->prepare("SELECT COUNT(id) as accepted_sponsorships FROM sponsorships WHERE sponsor_id = ? AND status = 'accepted'");
+$acceptedResult->bind_param("i", $sponsorId);
+$acceptedResult->execute();
+$acceptedSponsorships = $acceptedResult->get_result()->fetch_assoc()['accepted_sponsorships'];
 
 // 4. Get upcoming events that this sponsor is involved with
 $upcomingEvents = [];
@@ -40,16 +40,15 @@ while($row = $result->fetch_assoc()) {
     $upcomingEvents[] = $row;
 }
 
-// Note: "Revenue Generated" is not tracked in the current database schema.
-// For this demonstration, we'll create a placeholder value.
-$revenueGenerated = $totalSponsorships * 2500; // Placeholder calculation
+// Placeholder for revenue
+$revenueGenerated = $acceptedSponsorships * 2500;
 
-// 5. Combine all data into a single response
+// 5. Combine all data into a single response with the new fields
 echo json_encode([
     'sponsor_name' => $sponsorName,
     'stats' => [
-        'total_sponsorships' => (int)$totalSponsorships,
-        'total_events' => (int)$totalEvents,
+        'proposals_sent' => (int)$totalProposals,
+        'accepted_sponsorships' => (int)$acceptedSponsorships,
         'upcoming_events_count' => count($upcomingEvents),
         'revenue_generated' => (float)$revenueGenerated
     ],
