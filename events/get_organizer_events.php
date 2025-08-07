@@ -5,27 +5,27 @@ header('Content-Type: application/json');
 require_once '../config/db.php';
 require_once '../config/session.php';
 
-// 1. Secure the Endpoint
 requireRole('organizer');
 
-// 2. Get the Organizer's ID and Name from the Session
 $organizerId = getCurrentUserId();
-$organizerName = $_SESSION['name'];
 
-// 3. Prepare and Execute the Corrected Database Query
-// This query now uses the correct columns: `quantity` and `amount_paid`
-// from your `tickets` table.
+// 1. Get the list of events with calculated stats
 $stmt = $conn->prepare("
     SELECT
         e.id,
         e.title,
         e.date,
         e.location,
-        e.ticket_price,
-        -- Correctly sum the quantity of all tickets sold for the event
-        (SELECT SUM(t.quantity) FROM tickets t WHERE t.event_id = e.id) as tickets_sold,
-        -- Correctly sum the amount paid for all tickets for the event
-        (SELECT SUM(t.amount_paid) FROM tickets t WHERE t.event_id = e.id) as revenue
+        (SELECT COALESCE(SUM(t.quantity), 0) FROM tickets t WHERE t.event_id = e.id AND t.status = 'confirmed') as tickets_sold,
+        (SELECT COALESCE(SUM(t.amount_paid), 0) FROM tickets t WHERE t.event_id = e.id AND t.status = 'confirmed') as revenue,
+        -- This subquery determines the sponsorship status based on proposals
+        (SELECT
+            CASE
+                WHEN COUNT(CASE WHEN s.status = 'accepted' THEN 1 END) > 0 THEN 'Sponsored'
+                WHEN COUNT(CASE WHEN s.status = 'pending' THEN 1 END) > 0 THEN 'Pending'
+                ELSE 'No Proposals'
+            END
+        FROM sponsorships s WHERE s.event_id = e.id) as sponsor_status
     FROM
         events e
     WHERE
@@ -33,26 +33,35 @@ $stmt = $conn->prepare("
     ORDER BY
         e.date DESC
 ");
-
 $stmt->bind_param("i", $organizerId);
 $stmt->execute();
-$result = $stmt->get_result();
-
+$eventsResult = $stmt->get_result();
 $events = [];
-while ($row = $result->fetch_assoc()) {
-    // Handle cases where an event has no tickets sold yet (SUM returns NULL)
-    $row['tickets_sold'] = $row['tickets_sold'] ?? 0;
-    $row['revenue'] = $row['revenue'] ?? 0.00;
+while ($row = $eventsResult->fetch_assoc()) {
     $events[] = $row;
 }
+$stmt->close();
 
-// 4. Send the JSON Response
+// 2. Get the total number of unique accepted sponsors for the stat card
+$sponsorsStmt = $conn->prepare("
+    SELECT COUNT(DISTINCT s.sponsor_id) as total_sponsors
+    FROM sponsorships s
+    JOIN events e ON s.event_id = e.id
+    WHERE e.organizer_id = ? AND s.status = 'accepted'
+");
+$sponsorsStmt->bind_param("i", $organizerId);
+$sponsorsStmt->execute();
+$totalSponsors = $sponsorsStmt->get_result()->fetch_assoc()['total_sponsors'];
+$sponsorsStmt->close();
+
+// 3. Return everything in a structured JSON object
 echo json_encode([
-    'organizer_name' => $organizerName,
-    'events' => $events
+    'events' => $events,
+    'organizer_name' => $_SESSION['name'], // Also send organizer name
+    'stats' => [
+        'total_sponsors' => (int)$totalSponsors
+    ]
 ]);
 
-$stmt->close();
 $conn->close();
-
 ?>

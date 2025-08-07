@@ -51,3 +51,12 @@ CREATE TABLE sponsorships (
     FOREIGN KEY (event_id) REFERENCES events(id),
     FOREIGN KEY (sponsor_id) REFERENCES users(id)
 );
+CREATE TABLE favorite_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    event_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    UNIQUE KEY (user_id, event_id)
+);
