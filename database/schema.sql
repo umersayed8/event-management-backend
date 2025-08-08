@@ -60,3 +60,7 @@ CREATE TABLE favorite_events (
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
     UNIQUE KEY (user_id, event_id)
 );
+CREATE TABLE settings (
+    setting_key VARCHAR(255) PRIMARY KEY,
+    setting_value TEXT
+);
