@@ -10,7 +10,7 @@ requireRole('sponsor');
 $sponsorId = getCurrentUserId();
 $sponsorName = $_SESSION['name'];
 
-// --- STAT CARDS DATA (No changes here) ---
+// --- STATS & EVENT LISTS ---
 $proposalsResult = $conn->prepare("SELECT COUNT(id) as total_proposals FROM sponsorships WHERE sponsor_id = ?");
 $proposalsResult->bind_param("i", $sponsorId);
 $proposalsResult->execute();
@@ -21,15 +21,30 @@ $acceptedResult->bind_param("i", $sponsorId);
 $acceptedResult->execute();
 $acceptedSponsorships = $acceptedResult->get_result()->fetch_assoc()['accepted_sponsorships'];
 
-// --- UPCOMING EVENTS LIST (Query is now corrected) ---
+
+// --- REVENUE LOGIC CORRECTED FOR YOUR TABLE STRUCTURE ---
+// This query now correctly sums the 'amount_paid' column from your 'tickets' table.
+$revenueResult = $conn->prepare("
+    SELECT SUM(t.amount_paid) as total_revenue
+    FROM tickets t
+    WHERE t.event_id IN (
+        SELECT s.event_id
+        FROM sponsorships s
+        WHERE s.sponsor_id = ? AND s.status = 'accepted'
+    )
+");
+$revenueResult->bind_param("i", $sponsorId);
+$revenueResult->execute();
+$totalRevenue = $revenueResult->get_result()->fetch_assoc()['total_revenue'] ?? 0;
+
+
+// Fetch UPCOMING sponsored events
 $upcomingEvents = [];
 $upcomingEventsResult = $conn->prepare("
-    SELECT e.title, e.date, e.location, s.status
-    FROM sponsorships s
-    JOIN events e ON s.event_id = e.id
+    SELECT e.id as event_id, e.title, e.date, e.location, s.status
+    FROM sponsorships s JOIN events e ON s.event_id = e.id
     WHERE s.sponsor_id = ? AND e.date >= CURDATE() AND s.status = 'accepted'
-    ORDER BY e.date ASC
-    LIMIT 5
+    ORDER BY e.date ASC LIMIT 5
 ");
 $upcomingEventsResult->bind_param("i", $sponsorId);
 $upcomingEventsResult->execute();
@@ -38,23 +53,61 @@ while($row = $result->fetch_assoc()) {
     $upcomingEvents[] = $row;
 }
 
-// --- CHART DATA (No changes here) ---
+// Fetch PAST sponsored events
+$pastEvents = [];
+$pastEventsResult = $conn->prepare("
+    SELECT e.id as event_id, e.title, e.date, e.location, s.status
+    FROM sponsorships s JOIN events e ON s.event_id = e.id
+    WHERE s.sponsor_id = ? AND e.date < CURDATE() AND s.status = 'accepted'
+    ORDER BY e.date DESC LIMIT 5
+");
+$pastEventsResult->bind_param("i", $sponsorId);
+$pastEventsResult->execute();
+$result = $pastEventsResult->get_result();
+while($row = $result->fetch_assoc()) {
+    $pastEvents[] = $row;
+}
+
+// --- CHART DATA ---
 $sponsorshipGrowth = [];
-// ... (query for sponsorship growth remains the same) ...
+$growthResult = $conn->prepare("
+    SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(id) as count
+    FROM sponsorships
+    WHERE sponsor_id = ? AND status = 'accepted' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY month ORDER BY month ASC
+");
+$growthResult->bind_param("i", $sponsorId);
+$growthResult->execute();
+$result = $growthResult->get_result();
+while($row = $result->fetch_assoc()) {
+    $sponsorshipGrowth[] = $row;
+}
+
 $sponsorshipByCategory = [];
-// ... (query for sponsorship by category remains the same) ...
+$categoryResult = $conn->prepare("
+    SELECT e.category, COUNT(s.id) as count
+    FROM sponsorships s JOIN events e ON s.event_id = e.id
+    WHERE s.sponsor_id = ? AND s.status = 'accepted' AND e.category IS NOT NULL
+    GROUP BY e.category ORDER BY count DESC
+");
+$categoryResult->bind_param("i", $sponsorId);
+$categoryResult->execute();
+$result = $categoryResult->get_result();
+while($row = $result->fetch_assoc()) {
+    $sponsorshipByCategory[] = $row;
+}
 
-
-// --- FINAL JSON RESPONSE (No changes here) ---
+// --- FINAL JSON RESPONSE ---
 echo json_encode([
     'sponsor_name' => $sponsorName,
     'stats' => [
         'proposals_sent' => (int)$totalProposals,
         'accepted_sponsorships' => (int)$acceptedSponsorships,
         'upcoming_events_count' => count($upcomingEvents),
-        'revenue_generated' => (float)($acceptedSponsorships * 2500)
+        'total_revenue' => (float)$totalRevenue
     ],
     'upcoming_events_list' => $upcomingEvents,
+    'past_events_list' => $pastEvents,
     'chart_data' => [
         'sponsorship_growth' => $sponsorshipGrowth,
         'sponsorship_by_category' => $sponsorshipByCategory

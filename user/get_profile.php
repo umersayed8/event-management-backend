@@ -14,7 +14,8 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id'];
 
-$stmt = $conn->prepare("SELECT name, email, role FROM users WHERE id = ?");
+// Ensure you are selecting the new profile_photo_path column
+$stmt = $conn->prepare("SELECT id, name, email, role, profile_photo_path FROM users WHERE id = ?");
 $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();

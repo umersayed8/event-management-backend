@@ -24,6 +24,7 @@ CREATE TABLE events (
     ticket_price DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     banner_image VARCHAR(255) DEFAULT NULL,
+    COLUMN audience_size INT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (organizer_id) REFERENCES users(id)
 );
@@ -63,4 +64,14 @@ CREATE TABLE favorite_events (
 CREATE TABLE settings (
     setting_key VARCHAR(255) PRIMARY KEY,
     setting_value TEXT
+);
+CREATE TABLE sponsorship_proposals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT NOT NULL,
+    sponsor_id INT NOT NULL,
+    proposal_details TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending', -- e.g., 'pending', 'accepted', 'rejected'
+    proposal_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (sponsor_id) REFERENCES users(id) ON DELETE CASCADE
 );
