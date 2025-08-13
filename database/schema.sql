@@ -8,10 +8,10 @@ CREATE TABLE users (
     email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     role ENUM('organizer', 'sponsor', 'ticket_buyer', 'admin') NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
-    PRIMARY KEY (id),
-    UNIQUE (email)
+    created_at DATETIME NOT NULL,
+    status ENUM('active', 'inactive') NOT NULL,
+    profile_photo_path VARCHAR(255) DEFAULT NULL,
+    PRIMARY KEY (id)
 );
 
 CREATE TABLE events (
