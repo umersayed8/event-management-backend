@@ -60,12 +60,14 @@ if (!is_numeric($audienceSize) || $audienceSize <= 0) {
 // 4. Banner Upload Validation
 $uploadPath = null;
 if ($banner && $banner['error'] === UPLOAD_ERR_OK) {
-    // Check if file is a PNG
+    // Check if file is a PNG or JPEG
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime_type = $finfo->file($banner['tmp_name']);
-    if ($mime_type !== 'image/png') {
+    $allowed_mime_types = ['image/png', 'image/jpeg'];
+    
+    if (!in_array($mime_type, $allowed_mime_types)) {
         http_response_code(400);
-        echo json_encode(['error' => 'Only PNG images are allowed for the banner.']);
+        echo json_encode(['error' => 'Only PNG or JPEG images are allowed for the banner.']);
         exit;
     }
 

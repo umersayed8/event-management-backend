@@ -24,7 +24,7 @@ CREATE TABLE events (
     ticket_price DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     banner_image VARCHAR(255) DEFAULT NULL,
-    COLUMN audience_size INT NULL,
+    audience_size INT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (organizer_id) REFERENCES users(id)
 );
